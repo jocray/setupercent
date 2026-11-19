@@ -11,7 +11,7 @@ use config::AppConfig;
 use eframe::egui;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 fn main() -> eframe::Result<()> {
     let config = Arc::new(Mutex::new(AppConfig::load()));
@@ -22,15 +22,19 @@ fn main() -> eframe::Result<()> {
     let devices_bg = Arc::clone(&devices);
     let config_bg = Arc::clone(&config);
     thread::spawn(move || {
+        let mut last_fetch = Instant::now();
         loop {
-            let interval_min = {
+            thread::sleep(Duration::from_secs(1));
+            let interval_secs = {
                 let cfg = config_bg.lock().unwrap();
-                cfg.poll_interval_minutes
+                cfg.poll_interval_minutes as u64 * 60
             };
-            thread::sleep(Duration::from_secs(interval_min as u64 * 60));
-            let updated = fetch_connected_devices();
-            if let Ok(mut lock) = devices_bg.lock() {
-                *lock = updated;
+            if last_fetch.elapsed() >= Duration::from_secs(interval_secs) {
+                let updated = fetch_connected_devices();
+                if let Ok(mut lock) = devices_bg.lock() {
+                    *lock = updated;
+                }
+                last_fetch = Instant::now();
             }
         }
     });
