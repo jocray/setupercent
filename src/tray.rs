@@ -3,7 +3,7 @@ use ab_glyph::{Font, FontRef, PxScale, ScaleFont};
 use image::{Rgba, RgbaImage};
 use tray_icon::{
     menu::{Menu, MenuEvent, MenuId, MenuItem},
-    Icon as TrayIconData, TrayIcon, TrayIconBuilder, TrayIconEvent,
+    Icon as TrayIconData, MouseButton, TrayIcon, TrayIconBuilder, TrayIconEvent,
 };
 
 pub enum TrayAction {
@@ -60,19 +60,32 @@ impl TrayManager {
     }
 
     pub fn poll_events(&self) -> TrayAction {
-        if let Ok(event) = MenuEvent::receiver().try_recv() {
+        let mut show = false;
+
+        while let Ok(event) = MenuEvent::receiver().try_recv() {
             if event.id == self.quit_id {
                 return TrayAction::Quit;
-            } else if event.id == self.show_id {
-                return TrayAction::ShowWindow;
+            }
+            if event.id == self.show_id {
+                show = true;
             }
         }
 
-        if let Ok(TrayIconEvent::Click { .. }) = TrayIconEvent::receiver().try_recv() {
-            return TrayAction::ShowWindow;
+        while let Ok(event) = TrayIconEvent::receiver().try_recv() {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                ..
+            } = event
+            {
+                show = true;
+            }
         }
 
-        TrayAction::None
+        if show {
+            TrayAction::ShowWindow
+        } else {
+            TrayAction::None
+        }
     }
 
     pub fn update_display(&self, percent: Option<u8>, tooltip: &str) {
