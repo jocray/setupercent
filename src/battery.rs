@@ -60,8 +60,7 @@ pub fn fetch_connected_devices() -> Vec<DeviceInfo> {
                 continue;
             };
 
-            let name = get_device_name(dev_info_set, &dev_info_data)
-                .unwrap_or_else(|| "Беспроводное устройство".to_string());
+            let name = get_device_name(dev_info_set, &dev_info_data).unwrap_or_default();
 
             if !result.iter().any(|d: &DeviceInfo| d.id == id) {
                 result.push(DeviceInfo {
