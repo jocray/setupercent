@@ -23,6 +23,7 @@ pub struct Translations {
     pub min_unit: &'static str,
     pub no_devices: &'static str,
     pub no_selection_tooltip: &'static str,
+    pub no_device_name: &'static str,
     pub tray_open: &'static str,
     pub tray_quit: &'static str,
 }
@@ -34,6 +35,7 @@ pub const EN: Translations = Translations {
     min_unit: "min",
     no_devices: "No wireless devices with battery sensor found",
     no_selection_tooltip: "setupercent — no selected devices",
+    no_device_name: "Unknown device",
     tray_open: "Open setupercent",
     tray_quit: "Quit",
 };
@@ -45,6 +47,7 @@ pub const RU: Translations = Translations {
     min_unit: "мин",
     no_devices: "Беспроводные устройства с датчиком заряда не найдены",
     no_selection_tooltip: "setupercent — нет выбранных устройств",
+    no_device_name: "Неизвестное устройство",
     tray_open: "Открыть setupercent",
     tray_quit: "Выход",
 };
