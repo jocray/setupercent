@@ -21,7 +21,7 @@ pub struct SetupercentApp {
     devices: Arc<Mutex<Vec<DeviceInfo>>>,
     config: Arc<Mutex<AppConfig>>,
     tray: TrayManager,
-    last_rendered_percent: Option<u8>,
+    last_tooltip: Option<String>,
     last_lang: Language,
 }
 
@@ -41,7 +41,7 @@ impl SetupercentApp {
             devices,
             config,
             tray,
-            last_rendered_percent: None,
+            last_tooltip: None,
             last_lang: lang,
         }
     }
@@ -107,22 +107,30 @@ impl SetupercentApp {
             .find(|d| config.enabled_device_ids.contains(&d.id));
         let current_percent = active_device.map(|d| d.battery_percent);
         let tooltip = match active_device {
-            Some(dev) => format!("setupercent — {}: {}%", dev.name, dev.battery_percent),
+            Some(dev) => {
+                let name: &str = if dev.name.is_empty() {
+                    t.no_device_name
+                } else {
+                    dev.name.as_str()
+                };
+                format!("setupercent — {}: {}%", name, dev.battery_percent)
+            }
             None => t.no_selection_tooltip.to_string(),
         };
         drop(config);
 
-        if current_percent != self.last_rendered_percent {
+        if self.last_tooltip.as_deref() != Some(tooltip.as_str()) {
             self.tray.update_display(current_percent, &tooltip);
-            self.last_rendered_percent = current_percent;
+            self.last_tooltip = Some(tooltip);
         }
     }
 
     fn draw_device_card(&mut self, ui: &mut egui::Ui, dev: &DeviceInfo) {
-        let mut is_enabled = {
+        let (mut is_enabled, lang) = {
             let cfg = self.config.lock().unwrap();
-            cfg.enabled_device_ids.contains(&dev.id)
+            (cfg.enabled_device_ids.contains(&dev.id), cfg.language)
         };
+        let t = tr(lang);
 
         let row_height = 44.0;
         let (rect, response) = ui.allocate_exact_size(
@@ -164,10 +172,16 @@ impl SetupercentApp {
                 .circle_stroke(circle_center, 6.0, Stroke::new(1.5, COLOR_TEXT_MUTED));
         }
 
+        let display_name: &str = if dev.name.is_empty() {
+            t.no_device_name
+        } else {
+            dev.name.as_str()
+        };
+
         ui.painter().text(
             egui::pos2(inner.left() + 24.0, center_y),
             egui::Align2::LEFT_CENTER,
-            &dev.name,
+            display_name,
             FontId::proportional(13.0),
             COLOR_TEXT,
         );
@@ -402,7 +416,7 @@ impl eframe::App for SetupercentApp {
             let t = tr(current_lang);
             self.tray.set_language(t.tray_open, t.tray_quit);
             self.last_lang = current_lang;
-            self.last_rendered_percent = None;
+            self.last_tooltip = None;
         }
 
         ctx.request_repaint_after(std::time::Duration::from_millis(250));
