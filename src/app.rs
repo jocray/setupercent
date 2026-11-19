@@ -195,7 +195,7 @@ impl SetupercentApp {
         let pct_text = format!("{}%", dev.battery_percent);
         let pct_galley =
             ui.painter()
-                .layout_no_wrap(pct_text, FontId::proportional(13.0), pct_color);
+                .layout_no_wrap(pct_text.clone(), FontId::proportional(13.0), pct_color);
         let pct_width = pct_galley.size().x;
 
         let bar_width = 44.0;
@@ -241,7 +241,9 @@ impl SetupercentApp {
 }
 
 impl eframe::App for SetupercentApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        let ctx = ui.ctx().clone();
+
         match self.tray.poll_events() {
             TrayAction::ShowWindow => {
                 ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
@@ -263,7 +265,7 @@ impl eframe::App for SetupercentApp {
 
         egui::CentralPanel::default()
             .frame(egui::Frame::new().fill(COLOR_BG).inner_margin(Margin::same(14)))
-            .show(ctx, |ui| {
+            .show_inside(ui, |ui| {
                 let lang = self.config.lock().unwrap().language;
                 let t = tr(lang);
 

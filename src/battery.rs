@@ -85,15 +85,17 @@ unsafe fn get_device_battery(
     let mut buffer = [0u8; 4];
     let mut required_size = 0u32;
 
-    let status = SetupDiGetDevicePropertyW(
-        dev_info_set,
-        dev_info_data,
-        &DEVPKEY_DEVICE_BATTERY_PERCENT,
-        &mut prop_type,
-        Some(&mut buffer),
-        Some(&mut required_size),
-        0,
-    );
+    let status = unsafe {
+        SetupDiGetDevicePropertyW(
+            dev_info_set,
+            dev_info_data,
+            &DEVPKEY_DEVICE_BATTERY_PERCENT,
+            &mut prop_type,
+            Some(&mut buffer),
+            Some(&mut required_size),
+            0,
+        )
+    };
 
     let _ = required_size;
 
@@ -112,20 +114,22 @@ unsafe fn get_device_name(
     let mut buffer = [0u16; 256];
     let mut required_size = 0u32;
 
-    let buffer_bytes = std::slice::from_raw_parts_mut(
-        buffer.as_mut_ptr() as *mut u8,
-        buffer.len() * std::mem::size_of::<u16>(),
-    );
+    let status = unsafe {
+        let buffer_bytes = std::slice::from_raw_parts_mut(
+            buffer.as_mut_ptr() as *mut u8,
+            buffer.len() * std::mem::size_of::<u16>(),
+        );
 
-    let status = SetupDiGetDevicePropertyW(
-        dev_info_set,
-        dev_info_data,
-        &DEVPKEY_DEVICE_FRIENDLY_NAME,
-        &mut prop_type,
-        Some(buffer_bytes),
-        Some(&mut required_size),
-        0,
-    );
+        SetupDiGetDevicePropertyW(
+            dev_info_set,
+            dev_info_data,
+            &DEVPKEY_DEVICE_FRIENDLY_NAME,
+            &mut prop_type,
+            Some(buffer_bytes),
+            Some(&mut required_size),
+            0,
+        )
+    };
 
     let _ = required_size;
 
@@ -148,14 +152,17 @@ unsafe fn get_device_instance_id(
     let mut buffer = [0u16; 256];
     let mut required_size = 0u32;
 
-    if SetupDiGetDeviceInstanceIdW(
-        dev_info_set,
-        dev_info_data,
-        Some(&mut buffer),
-        Some(&mut required_size),
-    )
-    .is_ok()
-    {
+    let ok = unsafe {
+        SetupDiGetDeviceInstanceIdW(
+            dev_info_set,
+            dev_info_data,
+            Some(&mut buffer),
+            Some(&mut required_size),
+        )
+        .is_ok()
+    };
+
+    if ok {
         let trimmed = buffer.split(|&c| c == 0).next().unwrap_or(&[]);
         let id = OsString::from_wide(trimmed).to_string_lossy().into_owned();
         if !id.is_empty() {
