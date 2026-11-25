@@ -1,9 +1,9 @@
-use crate::config::{tr, Language};
+use crate::config::{Language, tr};
 use ab_glyph::{Font, FontRef, PxScale, ScaleFont};
 use image::{Rgba, RgbaImage};
 use tray_icon::{
-    menu::{Menu, MenuEvent, MenuId, MenuItem},
     Icon as TrayIconData, MouseButton, TrayIcon, TrayIconBuilder, TrayIconEvent,
+    menu::{Menu, MenuEvent, MenuId, MenuItem},
 };
 
 pub enum TrayAction {
@@ -24,7 +24,8 @@ pub struct TrayManager {
 impl TrayManager {
     pub fn new(lang: Language) -> Result<Self, Box<dyn std::error::Error>> {
         let t = tr(lang);
-        let font_data = include_bytes!("../assets/fonts/JOCRAY-Regular.ttf");
+        // Bold-начертание: цифры на мелкой иконке 32×32 читаются максимально чётко.
+        let font_data = include_bytes!("../assets/fonts/JOCRAY-Bold.ttf");
         let font = FontRef::try_from_slice(font_data)?;
 
         let menu = Menu::new();
@@ -34,7 +35,6 @@ impl TrayManager {
         menu.append(&quit_item)?;
 
         let initial_icon = Self::render_percent_icon(&font, None)?;
-
         let tray_icon = TrayIconBuilder::new()
             .with_menu(Box::new(menu))
             .with_tooltip("setupercent")
@@ -61,7 +61,6 @@ impl TrayManager {
 
     pub fn poll_events(&self) -> TrayAction {
         let mut show = false;
-
         while let Ok(event) = MenuEvent::receiver().try_recv() {
             if event.id == self.quit_id {
                 return TrayAction::Quit;
@@ -70,7 +69,6 @@ impl TrayManager {
                 show = true;
             }
         }
-
         while let Ok(event) = TrayIconEvent::receiver().try_recv() {
             if let TrayIconEvent::Click {
                 button: MouseButton::Left,
@@ -80,7 +78,6 @@ impl TrayManager {
                 show = true;
             }
         }
-
         if show {
             TrayAction::ShowWindow
         } else {
@@ -127,17 +124,13 @@ impl TrayManager {
             + scaled_font.ascent();
 
         for (glyph_id, offset_x) in glyphs {
-            let glyph = glyph_id.with_scale_and_position(
-                scale,
-                ab_glyph::point(start_x + offset_x, baseline_y),
-            );
-
+            let glyph = glyph_id
+                .with_scale_and_position(scale, ab_glyph::point(start_x + offset_x, baseline_y));
             if let Some(outlined) = font.outline_glyph(glyph) {
                 let bounds = outlined.px_bounds();
                 outlined.draw(|gx, gy, coverage| {
                     let px = bounds.min.x as i32 + gx as i32;
                     let py = bounds.min.y as i32 + gy as i32;
-
                     if px >= 0 && px < size as i32 && py >= 0 && py < size as i32 {
                         let alpha = (coverage * 255.0).round() as u8;
                         if alpha > 0 {

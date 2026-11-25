@@ -6,7 +6,7 @@ mod config;
 mod tray;
 
 use app::SetupercentApp;
-use battery::{fetch_connected_devices, DeviceInfo};
+use battery::{DeviceInfo, fetch_connected_devices};
 use config::AppConfig;
 use eframe::egui;
 use std::sync::{Arc, Mutex};
@@ -15,7 +15,6 @@ use std::time::{Duration, Instant};
 
 fn main() -> eframe::Result<()> {
     let config = Arc::new(Mutex::new(AppConfig::load()));
-
     let initial_devices = fetch_connected_devices();
     let devices: Arc<Mutex<Vec<DeviceInfo>>> = Arc::new(Mutex::new(initial_devices));
 
@@ -39,9 +38,10 @@ fn main() -> eframe::Result<()> {
         }
     });
 
+    // v1.1.0: окно расширено под боковое меню (150 px), контент и нижний футер.
     let mut viewport = egui::ViewportBuilder::default()
-        .with_inner_size([340.0, 330.0])
-        .with_min_inner_size([340.0, 280.0])
+        .with_inner_size([560.0, 380.0])
+        .with_min_inner_size([560.0, 380.0])
         .with_resizable(false);
 
     if let Ok(img) =

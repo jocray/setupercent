@@ -1,8 +1,9 @@
 use crate::battery::DeviceInfo;
-use crate::config::{tr, AppConfig, Language};
+use crate::config::{AppConfig, Language, Translations, tr};
 use crate::tray::{TrayAction, TrayManager};
 use eframe::egui::{
-    self, Align, Color32, CornerRadius, FontId, Layout, Margin, RichText, Stroke, StrokeKind, Vec2,
+    self, Align, Color32, CornerRadius, FontFamily, FontId, Layout, Margin, RichText, Stroke,
+    StrokeKind, Vec2,
 };
 use std::sync::{Arc, Mutex};
 
@@ -17,12 +18,35 @@ const COLOR_DANGER: Color32 = Color32::from_rgb(0xeb, 0x57, 0x57);
 const COLOR_OK: Color32 = Color32::from_rgb(0x6f, 0xcf, 0x97);
 const COLOR_TRACK: Color32 = Color32::from_rgb(0x33, 0x33, 0x33);
 
+const REPO_URL: &str = "https://github.com/jocray/setupercent";
+const LICENSE_URL: &str = "https://github.com/jocray/setupercent/blob/main/LICENSE";
+const SECURITY_URL: &str = "https://github.com/jocray/setupercent/blob/main/SECURITY.md";
+const CONTRIBUTING_URL: &str = "https://github.com/jocray/setupercent/blob/main/CONTRIBUTING.md";
+
+/// Official GitHub mark outline in a 24×24 coordinate system (SVG path, M/C/c commands).
+const GITHUB_MARK_PATH: &str = "M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12";
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Tab {
+    Home,
+    Settings,
+    About,
+}
+
 pub struct SetupercentApp {
     devices: Arc<Mutex<Vec<DeviceInfo>>>,
     config: Arc<Mutex<AppConfig>>,
     tray: TrayManager,
     last_tooltip: Option<String>,
     last_lang: Language,
+    active_tab: Tab,
+    app_icon: Option<egui::TextureHandle>,
+    github_icon: egui::TextureHandle,
+}
+
+/// Настоящее жирное начертание JOCRAY-Bold.ttf (отдельное семейство "bold").
+fn bold_font(size: f32) -> FontId {
+    FontId::new(size, FontFamily::Name("bold".into()))
 }
 
 impl SetupercentApp {
@@ -37,32 +61,75 @@ impl SetupercentApp {
         let lang = config.lock().unwrap().language;
         let tray = TrayManager::new(lang).expect("Не удалось инициализировать иконку в трее");
 
+        let app_icon =
+            image::load_from_memory(include_bytes!("../assets/images/setupercent_icon.png"))
+                .ok()
+                .map(|img| {
+                    let rgba = img.to_rgba8();
+                    let size = [rgba.width() as usize, rgba.height() as usize];
+                    let color_image = egui::ColorImage::from_rgba_unmultiplied(size, rgba.as_raw());
+                    cc.egui_ctx.load_texture(
+                        "setupercent_app_icon",
+                        color_image,
+                        egui::TextureOptions::LINEAR,
+                    )
+                });
+
+        let github_icon = cc.egui_ctx.load_texture(
+            "github_mark",
+            github_mark_image(64),
+            egui::TextureOptions::LINEAR,
+        );
+
         Self {
             devices,
             config,
             tray,
             last_tooltip: None,
             last_lang: lang,
+            active_tab: Tab::Home,
+            app_icon,
+            github_icon,
         }
     }
 
     fn setup_custom_font(ctx: &egui::Context) {
         let mut fonts = egui::FontDefinitions::default();
         fonts.font_data.insert(
-            "custom_font".to_owned(),
-            egui::FontData::from_static(include_bytes!("../assets/fonts/JOCRAY-Regular.ttf")).into(),
+            "jocray_regular".to_owned(),
+            egui::FontData::from_static(include_bytes!("../assets/fonts/JOCRAY-Regular.ttf"))
+                .into(),
         );
+        fonts.font_data.insert(
+            "jocray_bold".to_owned(),
+            egui::FontData::from_static(include_bytes!("../assets/fonts/JOCRAY-Bold.ttf")).into(),
+        );
+
+        // Regular — основной шрифт для обычного текста.
         fonts
             .families
-            .entry(egui::FontFamily::Proportional)
+            .entry(FontFamily::Proportional)
             .or_default()
-            .insert(0, "custom_font".to_owned());
+            .insert(0, "jocray_regular".to_owned());
+
+        // Bold — отдельное семейство "bold" с фолбэком на Regular и системные шрифты.
+        let fallbacks = fonts
+            .families
+            .get(&FontFamily::Proportional)
+            .cloned()
+            .unwrap_or_default();
+        let bold_family = fonts
+            .families
+            .entry(FontFamily::Name("bold".into()))
+            .or_default();
+        bold_family.insert(0, "jocray_bold".to_owned());
+        bold_family.extend(fallbacks);
+
         ctx.set_fonts(fonts);
     }
 
     fn setup_visuals(ctx: &egui::Context) {
         let mut visuals = egui::Visuals::dark();
-
         visuals.panel_fill = COLOR_BG;
         visuals.window_fill = COLOR_BG;
         visuals.extreme_bg_color = Color32::from_rgb(0x15, 0x15, 0x15);
@@ -71,7 +138,6 @@ impl SetupercentApp {
         visuals.selection.bg_fill = COLOR_ACCENT;
         visuals.selection.stroke = Stroke::new(1.0, COLOR_TEXT);
         visuals.hyperlink_color = COLOR_ACCENT;
-
         visuals.window_corner_radius = CornerRadius::same(10);
 
         let wr = CornerRadius::same(6);
@@ -79,22 +145,18 @@ impl SetupercentApp {
         visuals.widgets.inactive.weak_bg_fill = COLOR_TRACK;
         visuals.widgets.inactive.corner_radius = wr;
         visuals.widgets.inactive.fg_stroke = Stroke::new(1.0, COLOR_TEXT);
-
         visuals.widgets.hovered.bg_fill = Color32::from_rgb(0x40, 0x40, 0x40);
         visuals.widgets.hovered.weak_bg_fill = Color32::from_rgb(0x40, 0x40, 0x40);
         visuals.widgets.hovered.corner_radius = wr;
         visuals.widgets.hovered.bg_stroke = Stroke::new(1.0, COLOR_ACCENT);
         visuals.widgets.hovered.fg_stroke = Stroke::new(1.0, COLOR_TEXT);
-
         visuals.widgets.active.bg_fill = COLOR_ACCENT;
         visuals.widgets.active.weak_bg_fill = COLOR_ACCENT;
         visuals.widgets.active.corner_radius = wr;
         visuals.widgets.active.fg_stroke = Stroke::new(1.0, COLOR_TEXT);
-
         visuals.widgets.noninteractive.bg_fill = Color32::TRANSPARENT;
         visuals.widgets.noninteractive.weak_bg_fill = Color32::TRANSPARENT;
         visuals.widgets.noninteractive.fg_stroke = Stroke::new(1.0, COLOR_TEXT);
-
         ctx.set_visuals(visuals);
     }
 
@@ -125,6 +187,67 @@ impl SetupercentApp {
         }
     }
 
+    fn version_badge(ui: &mut egui::Ui) {
+        egui::Frame::new()
+            .fill(Color32::from_rgba_unmultiplied(0x46, 0x6e, 0xce, 55))
+            .corner_radius(CornerRadius::same(10))
+            .inner_margin(Margin::symmetric(8, 3))
+            .show(ui, |ui| {
+                ui.label(
+                    RichText::new(format!("v{}", env!("CARGO_PKG_VERSION")))
+                        .font(bold_font(11.0))
+                        .color(COLOR_ACCENT),
+                );
+            });
+    }
+
+    fn draw_tab_button(&mut self, ui: &mut egui::Ui, tab: Tab, label: &str) {
+        let active = self.active_tab == tab;
+        let (rect, response) =
+            ui.allocate_exact_size(Vec2::new(ui.available_width(), 34.0), egui::Sense::click());
+        let response = response.on_hover_cursor(egui::CursorIcon::PointingHand);
+
+        let bg = if active {
+            COLOR_CARD_BG_ACTIVE
+        } else if response.hovered() {
+            COLOR_CARD_BG_HOVER
+        } else {
+            COLOR_CARD_BG
+        };
+        let rounding = CornerRadius::same(8);
+        ui.painter().rect_filled(rect, rounding, bg);
+        if active {
+            ui.painter().rect_stroke(
+                rect,
+                rounding,
+                Stroke::new(1.0, COLOR_ACCENT),
+                StrokeKind::Inside,
+            );
+        }
+
+        let font = if active {
+            bold_font(13.0)
+        } else {
+            FontId::proportional(13.0)
+        };
+        let color = if active || response.hovered() {
+            COLOR_TEXT
+        } else {
+            COLOR_TEXT_MUTED
+        };
+        ui.painter().text(
+            egui::pos2(rect.left() + 12.0, rect.center().y),
+            egui::Align2::LEFT_CENTER,
+            label,
+            font,
+            color,
+        );
+
+        if response.clicked() {
+            self.active_tab = tab;
+        }
+    }
+
     fn draw_device_card(&mut self, ui: &mut egui::Ui, dev: &DeviceInfo) {
         let (mut is_enabled, lang) = {
             let cfg = self.config.lock().unwrap();
@@ -137,7 +260,7 @@ impl SetupercentApp {
             Vec2::new(ui.available_width(), row_height),
             egui::Sense::click(),
         );
-
+        let response = response.on_hover_cursor(egui::CursorIcon::PointingHand);
         let hovered = response.hovered();
         let bg = if is_enabled {
             COLOR_CARD_BG_ACTIVE
@@ -149,7 +272,6 @@ impl SetupercentApp {
 
         let rounding = CornerRadius::same(8);
         ui.painter().rect_filled(rect, rounding, bg);
-
         if is_enabled {
             ui.painter().rect_stroke(
                 rect,
@@ -177,7 +299,6 @@ impl SetupercentApp {
         } else {
             dev.name.as_str()
         };
-
         ui.painter().text(
             egui::pos2(inner.left() + 24.0, center_y),
             egui::Align2::LEFT_CENTER,
@@ -191,11 +312,10 @@ impl SetupercentApp {
         } else {
             COLOR_OK
         };
-
         let pct_text = format!("{}%", dev.battery_percent);
-        let pct_galley =
-            ui.painter()
-                .layout_no_wrap(pct_text.clone(), FontId::proportional(13.0), pct_color);
+        let pct_galley = ui
+            .painter()
+            .layout_no_wrap(pct_text.clone(), bold_font(13.0), pct_color);
         let pct_width = pct_galley.size().x;
 
         let bar_width = 44.0;
@@ -205,17 +325,14 @@ impl SetupercentApp {
             egui::pos2(bar_right - bar_width, center_y - bar_height / 2.0),
             Vec2::new(bar_width, bar_height),
         );
-
         ui.painter().rect_filled(
             bar_rect,
             CornerRadius::same(3),
             Color32::from_rgb(0x38, 0x38, 0x38),
         );
         let fill_ratio = (dev.battery_percent.min(100) as f32) / 100.0;
-        let fill_rect = egui::Rect::from_min_size(
-            bar_rect.min,
-            Vec2::new(bar_width * fill_ratio, bar_height),
-        );
+        let fill_rect =
+            egui::Rect::from_min_size(bar_rect.min, Vec2::new(bar_width * fill_ratio, bar_height));
         ui.painter()
             .rect_filled(fill_rect, CornerRadius::same(3), pct_color);
 
@@ -223,7 +340,7 @@ impl SetupercentApp {
             egui::pos2(inner.right(), center_y),
             egui::Align2::RIGHT_CENTER,
             pct_text,
-            FontId::proportional(13.0),
+            bold_font(13.0),
             pct_color,
         );
 
@@ -238,6 +355,407 @@ impl SetupercentApp {
             cfg.save();
         }
     }
+
+    /// Вкладка «Главная»: список устройств / пустое состояние.
+    fn ui_home(&mut self, ui: &mut egui::Ui, devices: &[DeviceInfo], t: &Translations) {
+        ui.label(
+            RichText::new(t.devices_section)
+                .font(bold_font(10.5))
+                .color(COLOR_TEXT_MUTED),
+        );
+        ui.add_space(8.0);
+
+        if devices.is_empty() {
+            egui::Frame::new()
+                .fill(COLOR_CARD_BG)
+                .corner_radius(CornerRadius::same(8))
+                .inner_margin(Margin::symmetric(12, 12))
+                .show(ui, |ui| {
+                    ui.label(
+                        RichText::new(t.no_devices)
+                            .color(COLOR_TEXT_MUTED)
+                            .size(12.0),
+                    );
+                });
+        } else {
+            egui::ScrollArea::vertical()
+                .max_height(ui.available_height())
+                .auto_shrink([false, true])
+                .show(ui, |ui| {
+                    for dev in devices {
+                        self.draw_device_card(ui, dev);
+                        ui.add_space(6.0);
+                    }
+                });
+        }
+    }
+
+    /// Вкладка «Настройки»: интервал обновления + переключатель языка.
+    fn ui_settings(&mut self, ui: &mut egui::Ui, t: &Translations) {
+        ui.label(
+            RichText::new(t.interval_section)
+                .font(bold_font(10.5))
+                .color(COLOR_TEXT_MUTED),
+        );
+        ui.add_space(8.0);
+
+        let mut cfg = self.config.lock().unwrap();
+        let mut interval_changed = false;
+        egui::Frame::new()
+            .fill(COLOR_CARD_BG)
+            .corner_radius(CornerRadius::same(8))
+            .inner_margin(Margin::symmetric(12, 10))
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new(t.interval).color(COLOR_TEXT).size(12.0));
+                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                        ui.label(
+                            RichText::new(format!("{} {}", cfg.poll_interval_minutes, t.min_unit))
+                                .font(bold_font(12.0))
+                                .color(COLOR_ACCENT),
+                        );
+                    });
+                });
+                ui.add_space(6.0);
+                ui.scope(|ui| {
+                    ui.visuals_mut().widgets.inactive.bg_fill = Color32::from_rgb(0xdd, 0xdd, 0xdd);
+                    ui.visuals_mut().widgets.inactive.fg_stroke = Stroke::new(1.0, COLOR_BG);
+                    ui.visuals_mut().widgets.hovered.bg_fill = COLOR_ACCENT;
+                    ui.visuals_mut().widgets.hovered.fg_stroke = Stroke::new(1.0, COLOR_TEXT);
+                    ui.visuals_mut().widgets.active.bg_fill = COLOR_ACCENT;
+                    ui.visuals_mut().widgets.active.fg_stroke = Stroke::new(1.0, COLOR_TEXT);
+                    ui.spacing_mut().slider_width = ui.available_width();
+                    let slider =
+                        egui::Slider::new(&mut cfg.poll_interval_minutes, 1..=60).show_value(false);
+                    if ui.add(slider).changed() {
+                        interval_changed = true;
+                    }
+                });
+            });
+        if interval_changed {
+            cfg.save();
+        }
+
+        ui.add_space(12.0);
+        ui.label(
+            RichText::new(t.language_section)
+                .font(bold_font(10.5))
+                .color(COLOR_TEXT_MUTED),
+        );
+        ui.add_space(8.0);
+
+        let lang = cfg.language;
+        let mut new_lang: Option<Language> = None;
+        egui::Frame::new()
+            .fill(COLOR_CARD_BG)
+            .corner_radius(CornerRadius::same(8))
+            .inner_margin(Margin::symmetric(12, 10))
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new(t.language_label).color(COLOR_TEXT).size(12.0));
+                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                        ui.spacing_mut().button_padding = egui::vec2(10.0, 4.0);
+                        if ui
+                            .selectable_label(
+                                lang == Language::Ru,
+                                RichText::new("RU").font(bold_font(11.0)),
+                            )
+                            .clicked()
+                        {
+                            new_lang = Some(Language::Ru);
+                        }
+                        if ui
+                            .selectable_label(
+                                lang == Language::En,
+                                RichText::new("EN").font(bold_font(11.0)),
+                            )
+                            .clicked()
+                        {
+                            new_lang = Some(Language::En);
+                        }
+                    });
+                });
+            });
+        if let Some(l) = new_lang {
+            if l != lang {
+                cfg.language = l;
+                cfg.save();
+            }
+        }
+    }
+
+    /// Вкладка «О проекте».
+    fn ui_about(&self, ui: &mut egui::Ui, t: &Translations) {
+        ui.horizontal(|ui| {
+            if let Some(icon) = &self.app_icon {
+                ui.image((icon.id(), Vec2::splat(48.0)));
+                ui.add_space(4.0);
+            }
+            ui.vertical(|ui| {
+                ui.add_space(2.0);
+                ui.label(
+                    RichText::new("setupercent")
+                        .font(bold_font(20.0))
+                        .color(COLOR_TEXT),
+                );
+                ui.add_space(4.0);
+                ui.horizontal(|ui| {
+                    ui.label(
+                        RichText::new(t.about_version)
+                            .size(11.0)
+                            .color(COLOR_TEXT_MUTED),
+                    );
+                    Self::version_badge(ui);
+                });
+            });
+        });
+
+        ui.add_space(12.0);
+        ui.label(
+            RichText::new(t.about_description)
+                .size(12.5)
+                .color(COLOR_TEXT_MUTED),
+        );
+        ui.add_space(12.0);
+
+        egui::Frame::new()
+            .fill(COLOR_CARD_BG)
+            .corner_radius(CornerRadius::same(8))
+            .inner_margin(Margin::symmetric(12, 10))
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(
+                        RichText::new(t.about_license)
+                            .size(12.0)
+                            .color(COLOR_TEXT_MUTED),
+                    );
+                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                        ui.label(RichText::new("MIT").font(bold_font(12.0)).color(COLOR_TEXT));
+                    });
+                });
+                ui.add_space(6.0);
+                ui.horizontal(|ui| {
+                    ui.label(
+                        RichText::new(t.about_author)
+                            .size(12.0)
+                            .color(COLOR_TEXT_MUTED),
+                    );
+                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                        ui.label(
+                            RichText::new("JOCRAY Media")
+                                .font(bold_font(12.0))
+                                .color(COLOR_TEXT),
+                        );
+                    });
+                });
+            });
+    }
+}
+
+/// Компактная ссылка футера: 11 px, muted → accent при наведении.
+fn footer_link(ui: &mut egui::Ui, text: &str, url: &str) {
+    let font = FontId::proportional(11.0);
+    let galley = ui
+        .painter()
+        .layout_no_wrap(text.to_owned(), font.clone(), COLOR_TEXT_MUTED);
+    let (rect, response) = ui.allocate_exact_size(galley.size(), egui::Sense::click());
+    let response = response.on_hover_cursor(egui::CursorIcon::PointingHand);
+    let color = if response.hovered() {
+        COLOR_ACCENT
+    } else {
+        COLOR_TEXT_MUTED
+    };
+    ui.painter().text(
+        rect.left_center(),
+        egui::Align2::LEFT_CENTER,
+        text,
+        font,
+        color,
+    );
+    if response.clicked() {
+        ui.ctx().open_url(egui::OpenUrl::new_tab(url));
+    }
+}
+
+/// Кликабельная иконка GitHub (тинт белой векторной текстуры через Painter).
+fn github_icon(ui: &mut egui::Ui, texture: &egui::TextureHandle, size: f32) {
+    let (rect, response) = ui.allocate_exact_size(Vec2::splat(size), egui::Sense::click());
+    let response = response
+        .on_hover_text("GitHub")
+        .on_hover_cursor(egui::CursorIcon::PointingHand);
+    let color = if response.hovered() {
+        COLOR_ACCENT
+    } else {
+        COLOR_TEXT_MUTED
+    };
+    ui.painter().image(
+        texture.id(),
+        rect,
+        egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+        color,
+    );
+    if response.clicked() {
+        ui.ctx().open_url(egui::OpenUrl::new_tab(REPO_URL));
+    }
+}
+
+/// Разбор SVG-пути логотипа GitHub (команды M/C/c) в ломаную из точек (24×24).
+fn github_mark_points() -> Vec<egui::Pos2> {
+    fn next_number(it: &mut std::iter::Peekable<std::str::Chars<'_>>) -> Option<f32> {
+        while matches!(it.peek(), Some(' ' | ',')) {
+            it.next();
+        }
+        let mut s = String::new();
+        if matches!(it.peek(), Some('-' | '+')) {
+            s.push(*it.peek()?);
+            it.next();
+        }
+        let mut digits = 0usize;
+        while let Some(&c) = it.peek() {
+            if c.is_ascii_digit() {
+                s.push(c);
+                it.next();
+                digits += 1;
+            } else {
+                break;
+            }
+        }
+        if matches!(it.peek(), Some('.')) {
+            s.push('.');
+            it.next();
+            while let Some(&c) = it.peek() {
+                if c.is_ascii_digit() {
+                    s.push(c);
+                    it.next();
+                    digits += 1;
+                } else {
+                    break;
+                }
+            }
+        }
+        if digits == 0 {
+            return None;
+        }
+        s.parse().ok()
+    }
+
+    let mut it = GITHUB_MARK_PATH.chars().peekable();
+    let mut points = Vec::new();
+    let mut cur = egui::pos2(0.0, 0.0);
+    let mut cmd = 'M';
+    loop {
+        while matches!(it.peek(), Some(' ' | ',')) {
+            it.next();
+        }
+        match it.peek() {
+            None => break,
+            Some(&c) if c.is_ascii_alphabetic() => {
+                cmd = c;
+                it.next();
+            }
+            _ => {}
+        }
+        match cmd {
+            'M' => {
+                let (Some(x), Some(y)) = (next_number(&mut it), next_number(&mut it)) else {
+                    break;
+                };
+                cur = egui::pos2(x, y);
+                points.push(cur);
+                cmd = 'L';
+            }
+            'C' | 'c' => {
+                let (Some(x1), Some(y1), Some(x2), Some(y2), Some(x3), Some(y3)) = (
+                    next_number(&mut it),
+                    next_number(&mut it),
+                    next_number(&mut it),
+                    next_number(&mut it),
+                    next_number(&mut it),
+                    next_number(&mut it),
+                ) else {
+                    break;
+                };
+                let (p1, p2, p3) = if cmd == 'c' {
+                    (
+                        cur + egui::vec2(x1, y1),
+                        cur + egui::vec2(x2, y2),
+                        cur + egui::vec2(x3, y3),
+                    )
+                } else {
+                    (egui::pos2(x1, y1), egui::pos2(x2, y2), egui::pos2(x3, y3))
+                };
+                let p0 = cur;
+                const STEPS: u32 = 16;
+                for i in 1..=STEPS {
+                    let t = i as f32 / STEPS as f32;
+                    let mt = 1.0 - t;
+                    points.push(egui::pos2(
+                        mt * mt * mt * p0.x
+                            + 3.0 * mt * mt * t * p1.x
+                            + 3.0 * mt * t * t * p2.x
+                            + t * t * t * p3.x,
+                        mt * mt * mt * p0.y
+                            + 3.0 * mt * mt * t * p1.y
+                            + 3.0 * mt * t * t * p2.y
+                            + t * t * t * p3.y,
+                    ));
+                }
+                cur = p3;
+            }
+            _ => break,
+        }
+    }
+    points
+}
+
+/// Однократная растеризация контура GitHub в белую RGBA-текстуру со сглаживанием
+/// (scanline even-odd + суперсэмплинг 4×4). Тинт цветом задаётся при отрисовке.
+fn github_mark_image(size: usize) -> egui::ColorImage {
+    const SS: usize = 4;
+    let pts = github_mark_points();
+    let n = size * SS;
+    let scale = n as f32 / 24.0;
+    let poly: Vec<egui::Pos2> = pts
+        .iter()
+        .map(|p| egui::pos2(p.x * scale, p.y * scale))
+        .collect();
+
+    let mut coverage = vec![0u8; n * n];
+    if poly.len() >= 3 {
+        for row in 0..n {
+            let y = row as f32 + 0.5;
+            let mut xs: Vec<f32> = Vec::new();
+            let mut prev = poly[poly.len() - 1];
+            for &cur in &poly {
+                if (cur.y > y) != (prev.y > y) {
+                    xs.push(prev.x + (y - prev.y) * (cur.x - prev.x) / (cur.y - prev.y));
+                }
+                prev = cur;
+            }
+            xs.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+            for pair in xs.chunks_exact(2) {
+                let start = (pair[0] - 0.5).ceil().max(0.0) as usize;
+                let end = ((pair[1] - 0.5).ceil().max(0.0) as usize).min(n);
+                for col in start..end {
+                    coverage[row * n + col] = 1;
+                }
+            }
+        }
+    }
+
+    let mut rgba = vec![255u8; size * size * 4];
+    for py in 0..size {
+        for px in 0..size {
+            let mut sum = 0u32;
+            for dy in 0..SS {
+                for dx in 0..SS {
+                    sum += u32::from(coverage[(py * SS + dy) * n + px * SS + dx]);
+                }
+            }
+            rgba[(py * size + px) * 4 + 3] = (sum * 255 / (SS * SS) as u32) as u8;
+        }
+    }
+    egui::ColorImage::from_rgba_unmultiplied([size, size], &rgba)
 }
 
 impl eframe::App for SetupercentApp {
@@ -262,155 +780,75 @@ impl eframe::App for SetupercentApp {
 
         let current_devices = self.devices.lock().unwrap().clone();
         self.sync_tray_icon(&current_devices);
+        let t = tr(self.config.lock().unwrap().language);
 
-        egui::CentralPanel::default()
-            .frame(egui::Frame::new().fill(COLOR_BG).inner_margin(Margin::same(14)))
+        // ---- Нижний футер: разделитель, документы слева, GitHub справа ----
+        egui::TopBottomPanel::bottom("footer")
+            .frame(
+                egui::Frame::new()
+                    .fill(COLOR_BG)
+                    .inner_margin(Margin::symmetric(14, 8)),
+            )
             .show_inside(ui, |ui| {
-                let lang = self.config.lock().unwrap().language;
-                let t = tr(lang);
-
+                let (line, _) = ui.allocate_exact_size(
+                    Vec2::new(ui.available_width(), 1.0),
+                    egui::Sense::hover(),
+                );
+                ui.painter()
+                    .rect_filled(line, CornerRadius::ZERO, COLOR_TRACK);
+                ui.add_space(7.0);
                 ui.horizontal(|ui| {
-                    ui.label(RichText::new("setupercent").color(COLOR_TEXT).size(20.0).strong());
-
+                    ui.spacing_mut().item_spacing.x = 14.0;
+                    footer_link(ui, t.footer_license, LICENSE_URL);
+                    footer_link(ui, t.footer_security, SECURITY_URL);
+                    footer_link(ui, t.footer_contributing, CONTRIBUTING_URL);
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        egui::Frame::new()
-                            .fill(Color32::from_rgba_unmultiplied(0x46, 0x6e, 0xce, 55))
-                            .corner_radius(CornerRadius::same(10))
-                            .inner_margin(Margin::symmetric(8, 3))
-                            .show(ui, |ui| {
-                                ui.label(
-                                    RichText::new(format!("v{}", env!("CARGO_PKG_VERSION")))
-                                        .color(COLOR_ACCENT)
-                                        .size(11.0)
-                                        .strong(),
-                                );
-                            });
-
-                        ui.add_space(8.0);
-
-                        let mut new_lang: Option<Language> = None;
-                        if ui
-                            .selectable_label(
-                                lang == Language::Ru,
-                                RichText::new("RU").size(11.0).strong(),
-                            )
-                            .clicked()
-                        {
-                            new_lang = Some(Language::Ru);
-                        }
-                        if ui
-                            .selectable_label(
-                                lang == Language::En,
-                                RichText::new("EN").size(11.0).strong(),
-                            )
-                            .clicked()
-                        {
-                            new_lang = Some(Language::En);
-                        }
-
-                        if let Some(l) = new_lang {
-                            if l != lang {
-                                let mut cfg = self.config.lock().unwrap();
-                                cfg.language = l;
-                                cfg.save();
-                            }
-                        }
+                        github_icon(ui, &self.github_icon, 18.0);
                     });
                 });
+            });
 
+        // ---- Боковое меню навигации ----
+        egui::SidePanel::left("nav")
+            .exact_width(150.0)
+            .resizable(false)
+            .frame(
+                egui::Frame::new()
+                    .fill(COLOR_BG)
+                    .inner_margin(Margin::symmetric(10, 12)),
+            )
+            .show_inside(ui, |ui| {
+                ui.spacing_mut().item_spacing.y = 6.0;
+                self.draw_tab_button(ui, Tab::Home, t.tab_home);
+                self.draw_tab_button(ui, Tab::Settings, t.tab_settings);
+                self.draw_tab_button(ui, Tab::About, t.tab_about);
+            });
+
+        // ---- Основной контент ----
+        egui::CentralPanel::default()
+            .frame(
+                egui::Frame::new()
+                    .fill(COLOR_BG)
+                    .inner_margin(Margin::same(14)),
+            )
+            .show_inside(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(
+                        RichText::new("setupercent")
+                            .font(bold_font(20.0))
+                            .color(COLOR_TEXT),
+                    );
+                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                        Self::version_badge(ui);
+                    });
+                });
                 ui.add_space(14.0);
 
-                ui.label(
-                    RichText::new(t.devices_section)
-                        .color(COLOR_TEXT_MUTED)
-                        .size(10.5)
-                        .strong(),
-                );
-                ui.add_space(8.0);
-
-                if current_devices.is_empty() {
-                    egui::Frame::new()
-                        .fill(COLOR_CARD_BG)
-                        .corner_radius(CornerRadius::same(8))
-                        .inner_margin(Margin::symmetric(12, 12))
-                        .show(ui, |ui| {
-                            ui.label(
-                                RichText::new(t.no_devices)
-                                    .color(COLOR_TEXT_MUTED)
-                                    .size(12.0),
-                            );
-                        });
-                } else {
-                    egui::ScrollArea::vertical()
-                        .max_height(150.0)
-                        .auto_shrink([false, true])
-                        .show(ui, |ui| {
-                            for dev in &current_devices {
-                                self.draw_device_card(ui, dev);
-                                ui.add_space(6.0);
-                            }
-                        });
+                match self.active_tab {
+                    Tab::Home => self.ui_home(ui, &current_devices, t),
+                    Tab::Settings => self.ui_settings(ui, t),
+                    Tab::About => self.ui_about(ui, t),
                 }
-
-                ui.add_space(12.0);
-
-                ui.label(
-                    RichText::new(t.interval_section)
-                        .color(COLOR_TEXT_MUTED)
-                        .size(10.5)
-                        .strong(),
-                );
-                ui.add_space(8.0);
-
-                let mut cfg = self.config.lock().unwrap();
-                let mut changed = false;
-
-                egui::Frame::new()
-                    .fill(COLOR_CARD_BG)
-                    .corner_radius(CornerRadius::same(8))
-                    .inner_margin(Margin::symmetric(12, 10))
-                    .show(ui, |ui| {
-                        ui.horizontal(|ui| {
-                            ui.label(RichText::new(t.interval).color(COLOR_TEXT).size(12.0));
-                            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                                ui.label(
-                                    RichText::new(format!(
-                                        "{} {}",
-                                        cfg.poll_interval_minutes, t.min_unit
-                                    ))
-                                    .color(COLOR_ACCENT)
-                                    .size(12.0)
-                                    .strong(),
-                                );
-                            });
-                        });
-                        ui.add_space(6.0);
-                        ui.scope(|ui| {
-                            ui.visuals_mut().widgets.inactive.bg_fill =
-                                Color32::from_rgb(0xdd, 0xdd, 0xdd);
-                            ui.visuals_mut().widgets.inactive.fg_stroke =
-                                Stroke::new(1.0, COLOR_BG);
-                            ui.visuals_mut().widgets.hovered.bg_fill = COLOR_ACCENT;
-                            ui.visuals_mut().widgets.hovered.fg_stroke =
-                                Stroke::new(1.0, COLOR_TEXT);
-                            ui.visuals_mut().widgets.active.bg_fill = COLOR_ACCENT;
-                            ui.visuals_mut().widgets.active.fg_stroke =
-                                Stroke::new(1.0, COLOR_TEXT);
-
-                            ui.spacing_mut().slider_width = ui.available_width();
-                            let slider =
-                                egui::Slider::new(&mut cfg.poll_interval_minutes, 1..=60)
-                                    .show_value(false);
-                            if ui.add(slider).changed() {
-                                changed = true;
-                            }
-                        });
-                    });
-
-                if changed {
-                    cfg.save();
-                }
-                drop(cfg);
             });
 
         let current_lang = self.config.lock().unwrap().language;

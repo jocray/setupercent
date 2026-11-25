@@ -26,6 +26,22 @@ pub struct Translations {
     pub no_device_name: &'static str,
     pub tray_open: &'static str,
     pub tray_quit: &'static str,
+    // Вкладки бокового меню
+    pub tab_home: &'static str,
+    pub tab_settings: &'static str,
+    pub tab_about: &'static str,
+    // Страница настроек
+    pub language_section: &'static str,
+    pub language_label: &'static str,
+    // Страница «О проекте»
+    pub about_description: &'static str,
+    pub about_version: &'static str,
+    pub about_license: &'static str,
+    pub about_author: &'static str,
+    // Ссылки в футере
+    pub footer_license: &'static str,
+    pub footer_security: &'static str,
+    pub footer_contributing: &'static str,
 }
 
 pub const EN: Translations = Translations {
@@ -38,6 +54,18 @@ pub const EN: Translations = Translations {
     no_device_name: "Unknown device",
     tray_open: "Open setupercent",
     tray_quit: "Quit",
+    tab_home: "Home",
+    tab_settings: "Settings",
+    tab_about: "About",
+    language_section: "LANGUAGE",
+    language_label: "Language",
+    about_description: "A lightweight Windows system-tray utility that shows the battery level of your wireless mice, headphones and keyboards right on the tray icon.",
+    about_version: "Version",
+    about_license: "License",
+    about_author: "Author",
+    footer_license: "License",
+    footer_security: "Security",
+    footer_contributing: "Contributing",
 };
 
 pub const RU: Translations = Translations {
@@ -50,6 +78,18 @@ pub const RU: Translations = Translations {
     no_device_name: "Неизвестное устройство",
     tray_open: "Открыть setupercent",
     tray_quit: "Выход",
+    tab_home: "Главная",
+    tab_settings: "Настройки",
+    tab_about: "О проекте",
+    language_section: "ЯЗЫК",
+    language_label: "Язык",
+    about_description: "Лёгкая утилита для системного трея Windows: показывает уровень заряда беспроводных мышей, наушников и клавиатур прямо на иконке в трее.",
+    about_version: "Версия",
+    about_license: "Лицензия",
+    about_author: "Автор",
+    footer_license: "Лицензия",
+    footer_security: "Безопасность",
+    footer_contributing: "Участие",
 };
 
 pub fn tr(lang: Language) -> &'static Translations {
