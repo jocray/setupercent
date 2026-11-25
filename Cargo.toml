@@ -1,6 +1,6 @@
 [package]
 name = "setupercent"
-version = "0.1.0"
+version = "1.1.0"
 edition = "2024"
 description = "Minimalist Windows tray utility showing battery percentage for wireless mice, headphones, and keyboards"
 license = "MIT"
@@ -8,11 +8,9 @@ repository = "https://github.com/jocray/setupercent"
 
 [dependencies]
 eframe = { version = "0.37", default-features = false, features = ["glow"] }
-
 tray-icon = "0.26"
 image = { version = "0.25", default-features = false, features = ["png"] }
 ab_glyph = "0.2"
-
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
