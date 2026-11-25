@@ -24,7 +24,6 @@ pub struct TrayManager {
 impl TrayManager {
     pub fn new(lang: Language) -> Result<Self, Box<dyn std::error::Error>> {
         let t = tr(lang);
-        // Bold-начертание: цифры на мелкой иконке 32×32 читаются максимально чётко.
         let font_data = include_bytes!("../assets/fonts/JOCRAY-Bold.ttf");
         let font = FontRef::try_from_slice(font_data)?;
 

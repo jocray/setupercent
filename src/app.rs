@@ -23,7 +23,6 @@ const LICENSE_URL: &str = "https://github.com/jocray/setupercent/blob/main/LICEN
 const SECURITY_URL: &str = "https://github.com/jocray/setupercent/blob/main/SECURITY.md";
 const CONTRIBUTING_URL: &str = "https://github.com/jocray/setupercent/blob/main/CONTRIBUTING.md";
 
-/// Official GitHub mark outline in a 24×24 coordinate system (SVG path, M/C/c commands).
 const GITHUB_MARK_PATH: &str = "M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12";
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -44,7 +43,6 @@ pub struct SetupercentApp {
     github_icon: egui::TextureHandle,
 }
 
-/// Настоящее жирное начертание JOCRAY-Bold.ttf (отдельное семейство "bold").
 fn bold_font(size: f32) -> FontId {
     FontId::new(size, FontFamily::Name("bold".into()))
 }
@@ -105,14 +103,12 @@ impl SetupercentApp {
             egui::FontData::from_static(include_bytes!("../assets/fonts/JOCRAY-Bold.ttf")).into(),
         );
 
-        // Regular — основной шрифт для обычного текста.
         fonts
             .families
             .entry(FontFamily::Proportional)
             .or_default()
             .insert(0, "jocray_regular".to_owned());
 
-        // Bold — отдельное семейство "bold" с фолбэком на Regular и системные шрифты.
         let fallbacks = fonts
             .families
             .get(&FontFamily::Proportional)
@@ -356,7 +352,6 @@ impl SetupercentApp {
         }
     }
 
-    /// Вкладка «Главная»: список устройств / пустое состояние.
     fn ui_home(&mut self, ui: &mut egui::Ui, devices: &[DeviceInfo], t: &Translations) {
         ui.label(
             RichText::new(t.devices_section)
@@ -390,7 +385,6 @@ impl SetupercentApp {
         }
     }
 
-    /// Вкладка «Настройки»: интервал обновления + переключатель языка.
     fn ui_settings(&mut self, ui: &mut egui::Ui, t: &Translations) {
         ui.label(
             RichText::new(t.interval_section)
@@ -484,7 +478,6 @@ impl SetupercentApp {
         }
     }
 
-    /// Вкладка «О проекте».
     fn ui_about(&self, ui: &mut egui::Ui, t: &Translations) {
         ui.horizontal(|ui| {
             if let Some(icon) = &self.app_icon {
@@ -552,7 +545,6 @@ impl SetupercentApp {
     }
 }
 
-/// Компактная ссылка футера: 11 px, muted → accent при наведении.
 fn footer_link(ui: &mut egui::Ui, text: &str, url: &str) {
     let font = FontId::proportional(11.0);
     let galley = ui
@@ -577,7 +569,6 @@ fn footer_link(ui: &mut egui::Ui, text: &str, url: &str) {
     }
 }
 
-/// Кликабельная иконка GitHub (тинт белой векторной текстуры через Painter).
 fn github_icon(ui: &mut egui::Ui, texture: &egui::TextureHandle, size: f32) {
     let (rect, response) = ui.allocate_exact_size(Vec2::splat(size), egui::Sense::click());
     let response = response
@@ -599,7 +590,6 @@ fn github_icon(ui: &mut egui::Ui, texture: &egui::TextureHandle, size: f32) {
     }
 }
 
-/// Разбор SVG-пути логотипа GitHub (команды M/C/c) в ломаную из точек (24×24).
 fn github_mark_points() -> Vec<egui::Pos2> {
     fn next_number(it: &mut std::iter::Peekable<std::str::Chars<'_>>) -> Option<f32> {
         while matches!(it.peek(), Some(' ' | ',')) {
@@ -708,8 +698,6 @@ fn github_mark_points() -> Vec<egui::Pos2> {
     points
 }
 
-/// Однократная растеризация контура GitHub в белую RGBA-текстуру со сглаживанием
-/// (scanline even-odd + суперсэмплинг 4×4). Тинт цветом задаётся при отрисовке.
 fn github_mark_image(size: usize) -> egui::ColorImage {
     const SS: usize = 4;
     let pts = github_mark_points();
@@ -782,14 +770,13 @@ impl eframe::App for SetupercentApp {
         self.sync_tray_icon(&current_devices);
         let t = tr(self.config.lock().unwrap().language);
 
-        // ---- Нижний футер: разделитель, документы слева, GitHub справа ----
-        egui::TopBottomPanel::bottom("footer")
+        egui::Panel::bottom("footer")
             .frame(
                 egui::Frame::new()
                     .fill(COLOR_BG)
                     .inner_margin(Margin::symmetric(14, 8)),
             )
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 let (line, _) = ui.allocate_exact_size(
                     Vec2::new(ui.available_width(), 1.0),
                     egui::Sense::hover(),
@@ -808,30 +795,28 @@ impl eframe::App for SetupercentApp {
                 });
             });
 
-        // ---- Боковое меню навигации ----
-        egui::SidePanel::left("nav")
-            .exact_width(150.0)
+        egui::Panel::left("nav")
+            .exact_size(150.0)
             .resizable(false)
             .frame(
                 egui::Frame::new()
                     .fill(COLOR_BG)
                     .inner_margin(Margin::symmetric(10, 12)),
             )
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 ui.spacing_mut().item_spacing.y = 6.0;
                 self.draw_tab_button(ui, Tab::Home, t.tab_home);
                 self.draw_tab_button(ui, Tab::Settings, t.tab_settings);
                 self.draw_tab_button(ui, Tab::About, t.tab_about);
             });
 
-        // ---- Основной контент ----
         egui::CentralPanel::default()
             .frame(
                 egui::Frame::new()
                     .fill(COLOR_BG)
                     .inner_margin(Margin::same(14)),
             )
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 ui.horizontal(|ui| {
                     ui.label(
                         RichText::new("setupercent")

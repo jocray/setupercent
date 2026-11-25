@@ -38,7 +38,6 @@ fn main() -> eframe::Result<()> {
         }
     });
 
-    // v1.1.0: окно расширено под боковое меню (150 px), контент и нижний футер.
     let mut viewport = egui::ViewportBuilder::default()
         .with_inner_size([560.0, 380.0])
         .with_min_inner_size([560.0, 380.0])

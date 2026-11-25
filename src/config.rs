@@ -26,19 +26,15 @@ pub struct Translations {
     pub no_device_name: &'static str,
     pub tray_open: &'static str,
     pub tray_quit: &'static str,
-    // Вкладки бокового меню
     pub tab_home: &'static str,
     pub tab_settings: &'static str,
     pub tab_about: &'static str,
-    // Страница настроек
     pub language_section: &'static str,
     pub language_label: &'static str,
-    // Страница «О проекте»
     pub about_description: &'static str,
     pub about_version: &'static str,
     pub about_license: &'static str,
     pub about_author: &'static str,
-    // Ссылки в футере
     pub footer_license: &'static str,
     pub footer_security: &'static str,
     pub footer_contributing: &'static str,
