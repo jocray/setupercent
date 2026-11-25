@@ -1,11 +1,11 @@
 use std::ffi::OsString;
 use std::os::windows::ffi::OsStringExt;
 use windows::Win32::Devices::DeviceAndDriverInstallation::{
-    SetupDiDestroyDeviceInfoList, SetupDiEnumDeviceInfo, SetupDiGetClassDevsW,
-    SetupDiGetDeviceInstanceIdW, SetupDiGetDevicePropertyW, DIGCF_ALLCLASSES, DIGCF_PRESENT,
-    HDEVINFO, SP_DEVINFO_DATA,
+    DIGCF_ALLCLASSES, DIGCF_PRESENT, HDEVINFO, SP_DEVINFO_DATA, SetupDiDestroyDeviceInfoList,
+    SetupDiEnumDeviceInfo, SetupDiGetClassDevsW, SetupDiGetDeviceInstanceIdW,
+    SetupDiGetDevicePropertyW,
 };
-use windows::Win32::Devices::Properties::{DEVPROPTYPE, DEVPROP_TYPE_BYTE, DEVPROP_TYPE_STRING};
+use windows::Win32::Devices::Properties::{DEVPROP_TYPE_BYTE, DEVPROP_TYPE_STRING, DEVPROPTYPE};
 use windows::Win32::Foundation::DEVPROPKEY;
 use windows::core::GUID;
 
@@ -30,15 +30,11 @@ pub fn fetch_connected_devices() -> Vec<DeviceInfo> {
     let mut result = Vec::new();
 
     unsafe {
-        let dev_info_set = match SetupDiGetClassDevsW(
-            None,
-            None,
-            None,
-            DIGCF_PRESENT | DIGCF_ALLCLASSES,
-        ) {
-            Ok(set) => set,
-            Err(_) => return result,
-        };
+        let dev_info_set =
+            match SetupDiGetClassDevsW(None, None, None, DIGCF_PRESENT | DIGCF_ALLCLASSES) {
+                Ok(set) => set,
+                Err(_) => return result,
+            };
 
         let mut index = 0;
         loop {

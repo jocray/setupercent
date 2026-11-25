@@ -10,10 +10,15 @@ fn main() {
             let mut res = winresource::WindowsResource::new();
             res.set_icon(icon_path);
             res.set("ProductName", "setupercent");
-            res.set("FileDescription", "Wireless devices battery percentage in system tray");
+            res.set(
+                "FileDescription",
+                "Wireless devices battery percentage in system tray",
+            );
             res.compile().expect("Не удалось вшить ресурсы в .exe");
         } else {
-            println!("cargo:warning=Файл assets/images/setupercent_icon.ico не найден, сборка пройдет со стандартной иконкой.");
+            println!(
+                "cargo:warning=Файл assets/images/setupercent_icon.ico не найден, сборка пройдет со стандартной иконкой."
+            );
         }
     }
 }
