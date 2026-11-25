@@ -8,50 +8,51 @@
 </p>
 
 <p align="center">
-  A Windows system-tray utility that keeps the battery level of your<br>
-  wireless mice, headphones, and keyboards right where you need it.
+A Windows system-tray utility that keeps the battery level of your<br>
+wireless mice, headphones, and keyboards right where you need it.
 </p>
-
----
 
 ## Why it exists
 
 Wireless mice die at the worst possible moment. Headphones run out mid-call. Keyboards disconnect while you're typing. Windows only shows battery levels for these devices in Bluetooth settings — and even then, not always and not for everything.
 
-**setupercent** fixes that: it puts the battery percentage right in the system tray and keeps it up to date in the background. One glance at the taskbar and you know when it's time to charge.
+setupercent fixes that: it puts the battery percentage right in the system tray and keeps it up to date in the background. One glance at the taskbar and you know when it's time to charge.
 
 ## What it looks like
 
 <p align="center">
-  <img src="assets/README/docs/preview_main.png" width="280" alt="Main window">
+  <img src="assets/README/docs/preview_main.png" width="480" alt="Main window">
 </p>
-
 <p align="center"><em>A device is selected — its battery shows up in the tray</em></p>
 
 <p align="center">
-  <img src="assets/README/docs/preview_multi.png" width="280" alt="Multiple devices">
+  <img src="assets/README/docs/preview_multi.png" width="480" alt="Multiple devices">
 </p>
-
 <p align="center"><em>Track several devices at once and switch between them</em></p>
+
+<p align="center">
+  <img src="assets/README/docs/preview_settings.png" width="480" alt="Settings tab">
+</p>
+<p align="center"><em>Configure the refresh interval and interface language in Settings</em></p>
 
 ## What it does
 
 - **Battery in the tray** — the number lives right on the icon, always visible, no extra clicks.
 - **Works with any wireless device** that reports battery to the system: mice, headphones, keyboards, gamepads.
 - **Multiple devices** — pick the ones you care about from a list and switch between them.
+- **Clean sidebar navigation** — switch effortlessly between Home, Settings, and About tabs.
 - **Configurable interval** — from 1 to 60 minutes, so the system isn't polled needlessly.
 - **Runs quietly** — the window hides to the tray when closed, nothing floats on top of your other windows.
-- **English and Russian** — switch languages with one click from the title bar.
+- **English and Russian** — switch languages with one click in the Settings tab.
 - **Lightweight** — about 2 MB, no frameworks, no WebView, barely uses any memory.
 
 ## How to use
 
 1. Launch `setupercent.exe` — the window opens right away, the tray icon appears.
-2. Tick the devices you want to keep an eye on.
-3. Set a refresh interval — 5 minutes, for example.
+2. Tick the devices you want to keep an eye on in the **Home** tab.
+3. Open **Settings** to set a refresh interval (e.g. 5 minutes) and choose your language.
 4. Close the window. It tucks into the tray, and the battery percentage keeps updating in the background.
-
-To bring the window back, click the tray icon. To quit, use the tray icon's context menu.
+5. To bring the window back, click the tray icon. To quit, use the tray icon's context menu.
 
 ## Installation
 
