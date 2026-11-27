@@ -5,13 +5,13 @@
 Only the latest release receives security updates.
 
 | Version | Supported |
-|---------|-----------|
-| Latest  | Yes       |
-| Older   | No        |
+| --- | --- |
+| Latest | Yes |
+| Older | No |
 
 ## Reporting a vulnerability
 
-**Please do not open a public issue for security problems.**
+Please do not open a public issue for security problems.
 
 If you believe you have found a security vulnerability in setupercent, report it privately:
 
@@ -33,4 +33,4 @@ Please include:
 
 ## Scope
 
-setupercent is a local Windows utility. It reads device battery levels through the standard SetupAPI, stores its config in `setupercent.json` next to the `.exe`, and does not talk to the network. Vulnerabilities relevant to that threat model are in scope — for example, unsafe handling of config files, privilege escalation via the `.exe`, or crashes triggered by crafted device data.
+setupercent is a local Windows utility. It reads device battery levels through the standard SetupAPI, stores its config in an NTFS alternate data stream of its own executable (with a fallback to `%APPDATA%\setupercent\config.json` on file systems without ADS support), and does not talk to the network. Vulnerabilities relevant to that threat model are in scope — for example, unsafe handling of config files, privilege escalation via the `.exe`, or crashes triggered by crafted device data.
