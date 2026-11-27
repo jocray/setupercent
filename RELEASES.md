@@ -1,6 +1,6 @@
-## What's New in v1.1.0
-
-- **Sidebar Navigation**: Added a clean left sidebar with **Home**, **Settings**, and **About** tabs.
-- **Typography & Tray Clarity**: Integrated `JOCRAY-Bold.ttf` alongside `JOCRAY-Regular.ttf` for headings, active controls, and sharper battery digits on the 32×32 tray icon.
-- **Footer & Repository Links**: Added a bottom footer with quick links to **License**, **Security**, **Contributing**, and the GitHub repository.
-- **About Page**: Added an overview screen with version details, license info, and credits.
+## What's New in v1.1.1
+GitHub Link Fixed: The GitHub icon in the footer now opens the repository in your default system browser via the `open` crate, so it works even though eframe is built without default features.
+No More JSON Next to the EXE: Settings are stored in an NTFS alternate data stream of the executable (`setupercent.exe:config`), with an automatic fallback to `%APPDATA%\setupercent\config.json` on file systems without ADS support (FAT32/exFAT). An existing `setupercent.json` is migrated and removed automatically.
+Low-Battery Notifications: Native Windows toast notifications at 15%, 10% and 5% for the devices you track. Each threshold fires once per discharge cycle and resets after the device charges above 15%. A new NOTIFICATIONS block in Settings adds a custom toggle switch (on by default, English and Russian).
+In-App Documents: License, Security and Contributing now open inside the window with a back button, a document title and scrollable text — no browser required. The active footer link is highlighted.
+Cleaner Header: The version badge was removed from the main header and is now shown only on the About tab.
